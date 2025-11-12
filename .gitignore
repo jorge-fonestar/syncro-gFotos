@@ -1,0 +1,60 @@
+# Archivos que comienzan con punto (archivos ocultos)
+.*
+
+# Excepción: permitir el propio .gitignore
+!.gitignore
+
+# Excepción: permitir .env.example (es un template, no contiene datos sensibles)
+!.env.example
+
+# Credenciales y tokens sensibles
+credentials.json
+token.pickle
+
+# Archivos de configuración con datos privados
+.env
+
+# Estado de sincronización
+sync_state.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Sistema operativo
+Thumbs.db
+.DS_Store
