@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 Script de sincronización incremental de Google Photos
 Descarga fotos y videos nuevos desde Google Photos Library API
@@ -21,6 +22,13 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
+
+# Configurar encoding UTF-8 para Windows y deshabilitar buffering
+if sys.platform == 'win32':
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace', line_buffering=True)
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace', line_buffering=True)
+    os.environ['PYTHONUNBUFFERED'] = '1'
 
 # Scopes necesarios para Google Photos API
 SCOPES = ['https://www.googleapis.com/auth/photoslibrary.readonly']
@@ -51,16 +59,16 @@ class GooglePhotosSync:
     def _validate_config(self):
         """Valida la configuración antes de iniciar"""
         if not os.path.exists(self.credentials_file):
-            print(f"❌ ERROR: No se encuentra el archivo '{self.credentials_file}'")
-            print("📖 Por favor, sigue las instrucciones en README.md para obtener las credenciales")
+            print(f"[ERROR] No se encuentra el archivo '{self.credentials_file}'")
+            print("[INFO] Por favor, sigue las instrucciones en README.md para obtener las credenciales")
             sys.exit(1)
 
         # Crear carpeta de descarga si no existe
         try:
             self.download_path.mkdir(parents=True, exist_ok=True)
-            print(f"📁 Carpeta de descarga: {self.download_path}")
+            print(f"[OK] Carpeta de descarga: {self.download_path}")
         except Exception as e:
-            print(f"❌ ERROR: No se puede crear la carpeta de descarga: {e}")
+            print(f"[ERROR] No se puede crear la carpeta de descarga: {e}")
             sys.exit(1)
 
     def authenticate(self):
@@ -72,46 +80,46 @@ class GooglePhotosSync:
             try:
                 with open(self.token_file, 'rb') as token:
                     creds = pickle.load(token)
-                print("✅ Token de autenticación cargado")
+                print("[OK] Token de autenticacion cargado")
             except Exception as e:
-                print(f"⚠️  Error cargando token: {e}")
+                print(f"[WARN] Error cargando token: {e}")
 
         # Si no hay credenciales válidas, autenticar
         if not creds or not creds.valid:
             if creds and creds.expired and creds.refresh_token:
                 try:
-                    print("🔄 Refrescando token expirado...")
+                    print("[INFO] Refrescando token expirado...")
                     creds.refresh(Request())
-                    print("✅ Token refrescado exitosamente")
+                    print("[OK] Token refrescado exitosamente")
                 except Exception as e:
-                    print(f"⚠️  Error refrescando token: {e}")
+                    print(f"[WARN] Error refrescando token: {e}")
                     creds = None
 
             if not creds:
                 try:
-                    print("🔐 Iniciando proceso de autenticación OAuth...")
+                    print("[INFO] Iniciando proceso de autenticacion OAuth...")
                     flow = InstalledAppFlow.from_client_secrets_file(
                         self.credentials_file, SCOPES)
                     creds = flow.run_local_server(port=0)
-                    print("✅ Autenticación exitosa")
+                    print("[OK] Autenticacion exitosa")
                 except Exception as e:
-                    print(f"❌ ERROR en autenticación: {e}")
+                    print(f"[ERROR] ERROR en autenticacion: {e}")
                     sys.exit(1)
 
             # Guardar token para futuros usos
             try:
                 with open(self.token_file, 'wb') as token:
                     pickle.dump(creds, token)
-                print(f"💾 Token guardado en {self.token_file}")
+                print(f"[OK] Token guardado en {self.token_file}")
             except Exception as e:
-                print(f"⚠️  No se pudo guardar el token: {e}")
+                print(f"[WARN] No se pudo guardar el token: {e}")
 
         # Construir servicio de API
         try:
             self.service = build('photoslibrary', 'v1', credentials=creds, static_discovery=False)
-            print("✅ Servicio de Google Photos API inicializado")
+            print("[OK] Servicio de Google Photos API inicializado")
         except Exception as e:
-            print(f"❌ ERROR inicializando servicio: {e}")
+            print(f"[ERROR] ERROR inicializando servicio: {e}")
             sys.exit(1)
 
     def load_state(self):
@@ -121,12 +129,12 @@ class GooglePhotosSync:
                 with open(self.state_file, 'r', encoding='utf-8') as f:
                     data = json.load(f)
                     self.synced_items = set(data.get('synced_items', []))
-                print(f"📋 Estado cargado: {len(self.synced_items)} items previamente sincronizados")
+                print(f"[INFO] Estado cargado: {len(self.synced_items)} items previamente sincronizados")
             except Exception as e:
-                print(f"⚠️  Error cargando estado: {e}. Iniciando desde cero.")
+                print(f"[WARN] Error cargando estado: {e}. Iniciando desde cero.")
                 self.synced_items = set()
         else:
-            print("📋 No hay estado previo. Primera sincronización.")
+            print("[INFO] No hay estado previo. Primera sincronizacion.")
             self.synced_items = set()
 
     def save_state(self):
@@ -139,13 +147,13 @@ class GooglePhotosSync:
             }
             with open(self.state_file, 'w', encoding='utf-8') as f:
                 json.dump(data, f, indent=2)
-            print(f"💾 Estado guardado: {len(self.synced_items)} items sincronizados")
+            print(f"[OK] Estado guardado: {len(self.synced_items)} items sincronizados")
         except Exception as e:
-            print(f"⚠️  Error guardando estado: {e}")
+            print(f"[WARN] Error guardando estado: {e}")
 
     def get_all_media_items(self) -> List[Dict]:
         """Obtiene todos los items de medios de Google Photos"""
-        print("🔍 Obteniendo lista de medios desde Google Photos...")
+        print("[INFO] Obteniendo lista de medios desde Google Photos...")
         all_items = []
         next_page_token = None
 
@@ -163,25 +171,25 @@ class GooglePhotosSync:
 
                     next_page_token = results.get('nextPageToken')
 
-                    print(f"📊 Items obtenidos: {len(all_items)}", end='\r')
+                    print(f"[INFO] Items obtenidos: {len(all_items)}", end='\r')
 
                     if not next_page_token:
                         break
 
                 except HttpError as e:
-                    print(f"\n⚠️  Error HTTP en la API: {e}")
+                    print(f"\n[WARN] Error HTTP en la API: {e}")
                     if e.resp.status in [403, 429]:
-                        print(f"⏳ Esperando {self.retry_delay} segundos antes de reintentar...")
+                        print(f"[INFO] Esperando {self.retry_delay} segundos antes de reintentar...")
                         time.sleep(self.retry_delay)
                         continue
                     else:
                         raise
 
         except Exception as e:
-            print(f"\n❌ ERROR obteniendo medios: {e}")
+            print(f"\n[ERROR] ERROR obteniendo medios: {e}")
             return all_items
 
-        print(f"\n✅ Total de items encontrados: {len(all_items)}")
+        print(f"\n[OK] Total de items encontrados: {len(all_items)}")
         return all_items
 
     def download_item(self, item: Dict) -> bool:
@@ -235,14 +243,14 @@ class GooglePhotosSync:
                 return True
 
             except requests.exceptions.RequestException as e:
-                print(f"\n⚠️  Error descargando {filename} (intento {attempt + 1}/{self.max_retries}): {e}")
+                print(f"\n[WARN] Error descargando {filename} (intento {attempt + 1}/{self.max_retries}): {e}")
                 if attempt < self.max_retries - 1:
                     time.sleep(self.retry_delay)
                 else:
-                    print(f"❌ Falló descarga de {filename} después de {self.max_retries} intentos")
+                    print(f"[ERROR] Fallo descarga de {filename} despues de {self.max_retries} intentos")
                     return False
             except Exception as e:
-                print(f"\n❌ Error inesperado descargando {filename}: {e}")
+                print(f"\n[ERROR] Error inesperado descargando {filename}: {e}")
                 return False
 
         return False
@@ -250,7 +258,7 @@ class GooglePhotosSync:
     def sync(self):
         """Ejecuta la sincronización incremental"""
         print("\n" + "="*60)
-        print("🚀 Iniciando sincronización de Google Photos")
+        print("[INFO] Iniciando sincronizacion de Google Photos")
         print("="*60 + "\n")
 
         # Autenticar
@@ -263,19 +271,19 @@ class GooglePhotosSync:
         all_items = self.get_all_media_items()
 
         if not all_items:
-            print("ℹ️  No hay items para sincronizar")
+            print("[INFO] No hay items para sincronizar")
             return
 
         # Filtrar solo items nuevos
         new_items = [item for item in all_items if item['id'] not in self.synced_items]
 
         if not new_items:
-            print("✅ Todo está sincronizado. No hay items nuevos.")
+            print("[OK] Todo esta sincronizado. No hay items nuevos.")
             return
 
-        print(f"\n📥 Items nuevos para descargar: {len(new_items)}")
-        print(f"📊 Items ya sincronizados: {len(self.synced_items)}")
-        print(f"📁 Descargando a: {self.download_path}\n")
+        print(f"\n[INFO] Items nuevos para descargar: {len(new_items)}")
+        print(f"[INFO] Items ya sincronizados: {len(self.synced_items)}")
+        print(f"[INFO] Descargando a: {self.download_path}\n")
 
         # Descargar items nuevos
         successful = 0
@@ -286,27 +294,27 @@ class GooglePhotosSync:
                 item_id = item['id']
                 filename = item.get('filename', f"item_{item_id}")
                 mime_type = item.get('mimeType', '')
-                media_type = "📹 Video" if 'video' in mime_type else "📷 Foto"
+                media_type = "[VIDEO]" if 'video' in mime_type else "[FOTO]"
 
                 print(f"\n[{idx}/{len(new_items)}] {media_type}: {filename}")
 
                 if self.download_item(item):
                     self.synced_items.add(item_id)
                     successful += 1
-                    print(f"✅ Descargado exitosamente")
+                    print(f"[OK] Descargado exitosamente")
 
                     # Guardar estado cada 10 items
                     if successful % 10 == 0:
                         self.save_state()
                 else:
                     failed += 1
-                    print(f"❌ Falló la descarga")
+                    print(f"[ERROR] Fallo la descarga")
 
         except KeyboardInterrupt:
-            print("\n\n⚠️  Sincronización interrumpida por el usuario")
-            print("💾 Guardando estado actual...")
+            print("\n\n[WARN] Sincronizacion interrumpida por el usuario")
+            print("[INFO] Guardando estado actual...")
             self.save_state()
-            print("✅ Estado guardado. Puedes reanudar la sincronización ejecutando el script nuevamente.")
+            print("[OK] Estado guardado. Puedes reanudar la sincronizacion ejecutando el script nuevamente.")
             sys.exit(0)
 
         # Guardar estado final
@@ -314,12 +322,12 @@ class GooglePhotosSync:
 
         # Resumen
         print("\n" + "="*60)
-        print("📊 RESUMEN DE SINCRONIZACIÓN")
+        print("[INFO] RESUMEN DE SINCRONIZACION")
         print("="*60)
-        print(f"✅ Descargados exitosamente: {successful}")
-        print(f"❌ Fallidos: {failed}")
-        print(f"📁 Total sincronizados: {len(self.synced_items)}")
-        print(f"📂 Ubicación: {self.download_path}")
+        print(f"[OK] Descargados exitosamente: {successful}")
+        print(f"[ERROR] Fallidos: {failed}")
+        print(f"[INFO] Total sincronizados: {len(self.synced_items)}")
+        print(f"[INFO] Ubicacion: {self.download_path}")
         print("="*60 + "\n")
 
 
@@ -329,10 +337,10 @@ def main():
         syncer = GooglePhotosSync()
         syncer.sync()
     except KeyboardInterrupt:
-        print("\n\n👋 Programa terminado por el usuario")
+        print("\n\n[INFO] Programa terminado por el usuario")
         sys.exit(0)
     except Exception as e:
-        print(f"\n❌ ERROR FATAL: {e}")
+        print(f"\n[ERROR] ERROR FATAL: {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)
